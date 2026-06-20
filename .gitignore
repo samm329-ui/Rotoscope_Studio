@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -73,11 +73,13 @@ poetry.lock
 # Model weights / large binaries
 *.pt
 *.pth
+*.torchscript
 *.onnx
 *.pb
 *.h5
 *.ckpt
 app/pipelines/deeplabv3_mobilenet_*.onnx
 
-# Test files
-test_*.py
+# Test artifacts at repo root
+test_*
+test_*/

@@ -10,13 +10,18 @@ falls back to a default subject class.
 """
 import os
 import pathlib
-from typing import Any, Optional
+from typing import Any, Optional, List
+
+import numpy as np
+import torch
+import torchvision.transforms as T
+from PIL import Image
 
 import app.config as _config
-from app.pipelines.find_mattes import fcn, getRotoModel
+from app.pipelines.FindMattes import getRotoModel as _getRotoModel
+import app.pipelines.FindMattes as _FindMattes
 
 
-# Mapping from subject hint (a plain-english string) to a FCN class index.
 SUBJECT_CLASSES = {
     'person': 15,
     'man': 15,
@@ -35,40 +40,39 @@ SUBJECT_CLASSES = {
     'background': 0,
 }
 DEFAULT_SUBJECT_CLASS = 15
+BATCH_SIZE = 8
 
 _model_loaded = False
+_trf_cache = {}
 
 
 def _ensure_model() -> None:
-    """Lazily-load the FCN model the first time it is needed."""
     global _model_loaded
     if not _model_loaded:
-        getRotoModel()
+        _getRotoModel()
         _model_loaded = True
 
 
-def _resolve_subject_class(subject: Optional[str]) -> int:
-    """Resolve the subject hint to a FCN class index.
+def _get_transform(size):
+    if size not in _trf_cache:
+        _trf_cache[size] = T.Compose([
+            T.Resize(size),
+            T.ToTensor(),
+            T.Normalize(mean=[0.485, 0.456, 0.406],
+                        std=[0.229, 0.224, 0.225])
+        ])
+    return _trf_cache[size]
 
-    If no hint is provided, the default subject class (person) is used."""
+
+def _resolve_subject_class(subject: Optional[str]) -> int:
     if not subject:
         return DEFAULT_SUBJECT_CLASS
     key = str(subject).strip().lower()
-    if key in SUBJECT_CLASSES:
-        return SUBJECT_CLASSES[key]
-    return DEFAULT_SUBJECT_CLASS
+    return SUBJECT_CLASSES.get(key, DEFAULT_SUBJECT_CLASS)
 
 
-def _class_to_alpha(class_idx, target_class: int) -> Any:
-    """Convert a FCN class-index map to a binary alpha mask (0.0-1.0).
-
-    Pixels matching the target class are kept (value 1.0) and other classes
-    are set to 0.0. The mask is returned as a numpy float32 array with the same shape as the input."""
-    import numpy as np
-    mask = np.zeros(class_idx.shape, dtype=np.float32)
-    mask[class_idx != target_class] = 0.0
-    mask[class_idx == target_class] = 1.0
-    # Smooth the mask with a box filter to remove isolated holes.
+def _class_to_alpha(class_idx, target_class: int):
+    mask = (class_idx == target_class).astype(np.float32)
     try:
         import cv2
         k = 5
@@ -76,41 +80,11 @@ def _class_to_alpha(class_idx, target_class: int) -> Any:
         smoothed = cv2.filter2D(mask, -1, kernel, borderType=cv2.BORDER_REFLECT101)
         mask = np.clip(smoothed, 0.0, 1.0)
     except Exception:
-        # If OpenCV is unavailable, fall back to numpy only.
         pass
     return mask
 
 
-def _precise_predict(input_path: Any, subject: Optional[str] = None, size: int = _config.PRECISE_MAX_SIZE) -> Any:
-    """Run the FCN model on a single input image at the precise resolution.
-
-    Returns a float alpha mask (H, W) with values 0.0-1.0.
-    If subject is given, only that class is kept (others are zeroed)."""
-    import numpy as np
-    import torch
-    import torchvision.transforms as T
-    from PIL import Image
-
-    _ensure_model()
-    target_class = _resolve_subject_class(subject)
-    img = Image.open(str(input_path))
-    trf = T.Compose([T.Resize(size), T.ToTensor(), T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    inp = trf(img).unsqueze(0)
-    with torch.no_grad():
-        out = fcn(inp)['out']
-    logits = torch.argmax(out.squeze(), dim=0).detach().cpu().numpy()
-    mask = _class_to_alpha(logits, target_class)
-    return mask
-
-
-def _save_alpha_png(mask: Any, output_path: Any, orig_height: int, orig_width: int) -> str:
-    """Save the float alpha mask array as a grayscale PNG.
-
-    The mask is resized to the original image dimensions before saving so that the
-    exported mask matches the frame dimensions."""
-    import numpy as np
-    from PIL import Image
-    # Resize mask to match the original frame dimensions when possible.
+def _save_alpha_png(mask, output_path, orig_height, orig_width):
     if orig_height > 0 and orig_width > 0:
         try:
             import cv2
@@ -118,43 +92,64 @@ def _save_alpha_png(mask: Any, output_path: Any, orig_height: int, orig_width: i
         except Exception:
             pass
     u8 = np.clip(mask * 255, 0, 255).astype(np.uint8)
-    im = Image.fromarray(u8, 'L')
-    im.save(str(output_path))
+    Image.fromarray(u8, 'L').save(str(output_path))
     return str(output_path)
 
 
-def process_frame(input_path: Any, output_path: Any, subject: Optional[str] = None, size: int = _config.PRECISE_MAX_SIZE) -> str:
-    """Run the precise pipeline on a single frame.
-
-    The result is a grayscale alpha PNG. Not a color-encoded matte."""
+def process_frame(input_path, output_path, subject=None, size=_config.PRECISE_MAX_SIZE):
     input_path = str(input_path)
     output_path = str(output_path)
     if not os.path.isfile(input_path):
         raise FileNotFoundError(f'Frame not found: {input_path}')
-    from PIL import Image
-    img = Image.open(input_path)
-    mask = _precise_predict(input_path, subject=subject, size=size)
+    _ensure_model()
+    target_class = _resolve_subject_class(subject)
+    img = Image.open(input_path).convert('RGB')
+    trf = _get_transform(size)
+    inp = trf(img).unsqueeze(0)
+    with torch.no_grad():
+        out = _FindMattes.fcn(inp)['out']
+    logits = torch.argmax(out.squeeze(), dim=0).cpu().numpy()
+    mask = _class_to_alpha(logits, target_class)
     return _save_alpha_png(mask, output_path, img.height, img.width)
 
 
-def process_job(job_id: str, subject: Optional[str] = None, progress_cb: Any = None) -> int:
-    """Process every frame for a job using the precise pipeline."""
-    import os
-    import pathlib
+def process_frame_batch(input_paths, output_paths, subject=None, size=_config.PRECISE_MAX_SIZE):
+    _ensure_model()
+    target_class = _resolve_subject_class(subject)
+    trf = _get_transform(size)
+    batch = []
+    originals = []
+    for p in input_paths:
+        img = Image.open(str(p)).convert('RGB')
+        originals.append((img.height, img.width))
+        batch.append(trf(img))
+    inp = torch.stack(batch, dim=0)
+    with torch.no_grad():
+        out = _FindMattes.fcn(inp)['out']
+    preds = torch.argmax(out, dim=1).cpu().numpy()
+    for i in range(len(input_paths)):
+        mask = _class_to_alpha(preds[i], target_class)
+        _save_alpha_png(mask, output_paths[i], originals[i][0], originals[i][1])
+
+
+def process_job(job_id, subject=None, progress_cb=None):
     frames_dir = _config.frames_dir(job_id)
     masks_dir = _config.masks_dir(job_id)
     masks_dir.mkdir(parents=True, exist_ok=True)
-    # Clear stale masks from previous runs.
     for fn in os.listdir(masks_dir):
         try:
             os.unlink(masks_dir / fn)
         except OSError:
             pass
+    _ensure_model()
     frames = sorted(frames_dir.glob('frame_*.png'))
     total = len(frames)
-    for i, frame_path in enumerate(frames):
-        out_path = masks_dir / frame_path.name
-        process_frame(str(frame_path), str(out_path), subject=subject, size=_config.PRECISE_MAX_SIZE)
+    size = _config.PRECISE_MAX_SIZE
+    for start in range(0, total, BATCH_SIZE):
+        batch_frames = frames[start:start + BATCH_SIZE]
+        input_paths = [str(f) for f in batch_frames]
+        output_paths = [str(masks_dir / f.name) for f in batch_frames]
+        process_frame_batch(input_paths, output_paths, subject=subject, size=size)
         if progress_cb is not None:
-            progress_cb(i, total)
+            progress_cb(min(start + BATCH_SIZE, total), total)
     return total

@@ -77,3 +77,7 @@ poetry.lock
 *.pb
 *.h5
 *.ckpt
+app/pipelines/deeplabv3_mobilenet_*.onnx
+
+# Test files
+test_*.py

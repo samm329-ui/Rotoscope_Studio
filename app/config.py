@@ -30,8 +30,8 @@ PORT = int(os.environ.get('ROTOPORT', 8000))
 
 
 # Processing tunables.
-FAST_MATTE_MAX_SIZE = 480
-PRECISE_MAX_SIZE = 1080
+FAST_MATTE_MAX_SIZE = 320
+PRECISE_MAX_SIZE = 720
 
 
 # Supported video extensions for frame extraction.

@@ -10,6 +10,7 @@ from .FindMattes import (
     getRotoModel,
     decode_segmap,
     createMatte,
+    createMatteBatch,
 )
 
-__all__ = ['fcn', 'getRotoModel', 'decode_segmap', 'createMatte']
+__all__ = ['fcn', 'getRotoModel', 'decode_segmap', 'createMatte', 'createMatteBatch']

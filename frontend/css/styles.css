@@ -1,0 +1,372 @@
+/* Rotoscope Studio - vanilla CSS, dark-mode friendly. */
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0f1115;
+  --card-bg: #181c23;
+  --card-border: #2a2f3a;
+  --text: #e7eaf0;
+  --text-muted: #98a0b0;
+  --accent: #6c8cff;
+  --accent-strong: #4f6cd9;
+  --success: #4cc38a;
+  --warning: #f0a85c;
+  --danger: #ef6c6c;
+  --radius: 10px;
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--card-border);
+  background: #11141a;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.brand-mark {
+  background: var(--accent);
+  color: white;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.brand-name {
+  letter-spacing: 0.3px;
+}
+
+.step-tracker {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.step {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--card-border);
+  transition: background 0.2s, color 0.2s;
+}
+
+.step.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.step.done {
+  background: rgba(76, 195, 138, 0.15);
+  color: var(--success);
+  border-color: rgba(76, 195, 138, 0.4);
+}
+
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 32px 16px;
+  width: 100%;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  width: 100%;
+  max-width: 720px;
+  box-shadow: var(--shadow);
+}
+
+.card h1 {
+  margin-top: 0;
+  font-size: 26px;
+  letter-spacing: -0.2px;
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 22px;
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.muted.small {
+  font-size: 13px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--card-border);
+  background: #232834;
+  color: var(--text);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  transition: background 0.2s, transform 0.1s, border-color 0.2s;
+}
+
+button:hover {
+  background: #2c3242;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+button.primary:hover {
+  background: var(--accent-strong);
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--text);
+}
+
+button.small {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.dropzone {
+  border: 2px dashed var(--card-border);
+  border-radius: var(--radius);
+  padding: 40px 20px;
+  text-align: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.dropzone.dragover {
+  background: rgba(108, 140, 255, 0.08);
+  border-color: var(--accent);
+}
+
+.dropzone p {
+  margin: 0 0 8px 0;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(108, 140, 255, 0.08);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  margin-top: 16px;
+}
+
+.file-name {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.workflow-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.workflow-card {
+  text-align: left;
+  padding: 18px;
+  border: 2px solid var(--card-border);
+  background: #1d2129;
+  border-radius: var(--radius);
+  transition: border-color 0.2s, background 0.2s;
+  color: var(--text);
+}
+
+.workflow-card:hover {
+  border-color: var(--accent);
+  background: #232a37;
+}
+
+.workflow-card.selected {
+  border-color: var(--accent);
+  background: rgba(108, 140, 255, 0.1);
+}
+
+.workflow-card p {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+}
+
+.subject-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.subject-chip {
+  padding: 8px 14px;
+  border: 1px solid var(--card-border);
+  background: #1d2129;
+  color: var(--text);
+  border-radius: 999px;
+  font-size: 13px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.subject-chip:hover {
+  border-color: var(--accent);
+  background: #232a37;
+}
+
+.subject-chip.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.subject-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.subject-info span {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: #1d2129;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 16px;
+  border: 1px solid var(--card-border);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #9bb1ff);
+  width: 0%;
+  transition: width 0.3s;
+}
+
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.preview-container img {
+  max-width: 100%;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  background: #000;
+}
+
+.setup-output {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #11141a;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--accent);
+  color: white;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 100;
+  max-width: 320px;
+}
+
+.toast.error {
+  background: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .workflow-grid {
+    grid-template-columns: 1fr;
+  }
+  .step-tracker {
+    font-size: 11px;
+  }
+}

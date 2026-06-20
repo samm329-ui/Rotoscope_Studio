@@ -1,4 +1,4 @@
-"""Export packager service for Rotoscope Studio.
+﻿"""Export packager service for Rotoscope Studio.
 
 Bundles all per-job artifacts (frames, masks, preview,
 metadata) into a single zip archive that the user can
@@ -66,6 +66,13 @@ def package_export(job_id: str) -> str:
         if masks_dir.is_dir():
             for fn in sorted(os.listdir(masks_dir)):
                 zf.write(masks_dir / fn, 'masks/' + fn)
+        # Alpha sequence: the final 0-255 alpha PNGs.
+        alpha_dir = _config.JOBS_DIR / job_id / 'alpha_sequence'
+        if alpha_dir.is_dir():
+            for fn in sorted(os.listdir(alpha_dir)):
+                if fn.startswith('frame_') and fn.endswith('.png'):
+                    zf.write(alpha_dir / fn, 'alpha_sequence/' + fn)
+
         # Previews: sprite sheet and pairs.
         if previews_dir.is_dir():
             for fn in sorted(os.listdir(previews_dir)):

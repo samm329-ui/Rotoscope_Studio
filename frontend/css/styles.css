@@ -1,4 +1,4 @@
-/* Rotoscope Studio - vanilla CSS, dark-mode friendly. */
+﻿/* Rotoscope Studio - vanilla CSS, dark-mode friendly. */
 * {
   box-sizing: border-box;
 }
@@ -263,6 +263,50 @@ button.small {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+}
+.click-canvas-wrap {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.click-canvas-stage {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0c0f15;
+  cursor: crosshair;
+  user-select: none;
+}
+#first-frame-img {
+  display: block;
+  max-width: 480px;
+  height: auto;
+}
+.click-marker {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: rgba(76, 122, 255, 0.25);
+  pointer-events: none;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
+}
+.advanced-prompt {
+  margin-top: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.advanced-prompt summary {
+  cursor: pointer;
+  color: var(--muted, #9aa3b2);
+  font-size: 13px;
 }
 
 .subject-chip {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -78,8 +78,28 @@
     <!-- SUBJECT -->
     <section class="card hidden" id="subject-card">
       <h2>Choose a subject</h2>
-      <p class="muted">Pick the person or object that should remain visible. Optional for fast matte, recommended for precise rotoscope.</p>
-      <div class="subject-grid">
+      <p class="muted">For the hybrid (RVM/SAM2) pipeline the easiest way to get a
+        perfect matte is to click on the subject in the first frame.
+        Works for people, animals, props, and cartoon characters.</p>
+
+      <div class="click-canvas-wrap">
+        <p class="muted small">Click on the subject in the preview below. The click is sent to
+          the server and used as the seed for the segmentation.</p>
+        <div class="click-canvas-stage">
+          <img id="first-frame-img" alt="First frame preview" />
+          <div id="click-marker" class="click-marker hidden"></div>
+        </div>
+        <p class="muted small">No first frame? <a id="reload-preview-link" href="#">Reload preview</a></p>
+        <div class="button-row">
+          <button id="clear-click-btn" class="secondary small">Clear click</button>
+        </div>
+      </div>
+
+      <details class="advanced-prompt">
+        <summary>Or pick from the standard subject list</summary>
+        <p class="muted small">Optional. Choose a class label if you don't want to click.
+          The class is currently only used for logging.</p>
+        <div class="subject-grid">
         <button class="subject-chip" data-subject="person">Person</button>
         <button class="subject-chip" data-subject="man">Man</button>
         <button class="subject-chip" data-subject="woman">Woman</button>
@@ -95,10 +115,12 @@
         <button class="subject-chip" data-subject="boat">Boat</button>
         <button class="subject-chip" data-subject="bird">Bird</button>
       </div>
+      </details>
+
       <div id="subject-info" class="subject-info hidden">
-        Selected: <span id="subject-label"></span>
-        <button id="change-subject-btn" class="secondary small">Change Subject</button>
-        <button id="clear-subject-btn" class="secondary small">Clear Subject</button>
+        Click: <span id="click-label">(none)</span>
+        Class: <span id="subject-label"></span>
+        <button id="change-subject-btn" class="secondary small">Clear class</button>
       </div>
       <div class="button-row">
         <button id="subject-next-btn" class="primary" disabled>Start Processing</button>

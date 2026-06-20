@@ -1,4 +1,4 @@
-// Rotoscope Studio - frontend logic.
+﻿// Rotoscope Studio - frontend logic.
 // State machine for the user journey. Talks to the backend over fetch.
 
 const API_BASE = '/api';
@@ -19,6 +19,8 @@ const app = {
   fileName: null,
   workflow: null,
   subject: null,
+  clickX: null,
+  clickY: null,
   statusPollHandle: null,
 };
 
@@ -198,45 +200,114 @@ document.querySelectorAll('.workflow-card').forEach(function (card) {
     card.classList.add('selected');
     app.workflow = card.getAttribute('data-workflow');
     setTimeout(function () {
-      if (app.workflow === 'precise_rotoscope') {
+        // Always go through the subject card so the user can
+        // click on the subject for a precise prompt.
         showCard(STATES.SUBJECT);
-      } else {
-        app.subject = null;
-        startProcessing();
-      }
-    }, 150);
+        loadFirstFramePreview();
+      }, 150);
+    });
   });
-});
 
 // =============== SUBJECT ===============
 
+// Subject chips: optional class label that is forwarded to the backend
+// in addition to (or instead of) a click prompt.
 document.querySelectorAll('.subject-chip').forEach(function (chip) {
   chip.addEventListener('click', function () {
     document.querySelectorAll('.subject-chip').forEach(function (c) { c.classList.remove('selected'); });
     chip.classList.add('selected');
     app.subject = chip.getAttribute('data-subject');
-    document.getElementById('subject-label').textContent = app.subject;
-    document.getElementById('subject-info').classList.remove('hidden');
-    document.getElementById('subject-next-btn').disabled = false;
+    var label = document.getElementById('subject-label');
+    if (label) label.textContent = app.subject;
+    var info = document.getElementById('subject-info');
+    if (info) info.classList.remove('hidden');
+    var next = document.getElementById('subject-next-btn');
+    if (next) next.disabled = false;
   });
 });
 
-document.getElementById('change-subject-btn').addEventListener('click', function () {
+function _clearSubjectClass() {
   app.subject = null;
-  document.getElementById('subject-info').classList.add('hidden');
-  document.getElementById('subject-next-btn').disabled = true;
   document.querySelectorAll('.subject-chip').forEach(function (c) { c.classList.remove('selected'); });
+  var label = document.getElementById('subject-label');
+  if (label) label.textContent = '';
+}
+
+var changeBtn = document.getElementById('change-subject-btn');
+if (changeBtn) changeBtn.addEventListener('click', _clearSubjectClass);
+
+
+
+// Click-to-select: click on the first-frame preview to set a point
+// prompt that is forwarded to the backend before processing.
+async function startProcessingWithPrompt() {
+  if (!app.jobId) {
+    showToast('Upload a video first.', true);
+    return;
+  }
+  try {
+    var fd = new FormData();
+    if (app.clickX !== null && app.clickY !== null) {
+      fd.append('click_x', String(app.clickX));
+      fd.append('click_y', String(app.clickY));
+    }
+    if (app.subject) {
+      fd.append('subject', app.subject);
+    }
+    await fetch(API_BASE + '/job/' + app.jobId + '/prompt', {
+      method: 'POST',
+      body: fd,
+    });
+  } catch (e) {
+    showToast('Could not save click prompt: ' + e.message, true);
+    return;
+  }
+  startProcessing();
+}
+document.getElementById('subject-next-btn').addEventListener('click', startProcessingWithPrompt);
+
+async function loadFirstFramePreview() {
+  var img = document.getElementById('first-frame-img');
+  var marker = document.getElementById('click-marker');
+  if (!img || !app.jobId) return;
+  img.src = API_BASE + '/first_frame/' + app.jobId + '?t=' + Date.now();
+  img.onload = function () {
+    marker.classList.add('hidden');
+    document.getElementById('subject-next-btn').disabled = false;
+  };
+  img.onerror = function () {
+    showToast('Could not load the first-frame preview.', true);
+  };
+  img.onclick = function (ev) {
+    var rect = img.getBoundingClientRect();
+    var scaleX = img.naturalWidth / rect.width;
+    var scaleY = img.naturalHeight / rect.height;
+    app.clickX = Math.round((ev.clientX - rect.left) * scaleX);
+    app.clickY = Math.round((ev.clientY - rect.top) * scaleY);
+    marker.style.left = (ev.clientX - rect.left) + 'px';
+    marker.style.top = (ev.clientY - rect.top) + 'px';
+    marker.classList.remove('hidden');
+    var label = document.getElementById('click-label');
+    if (label) label.textContent = '(' + app.clickX + ', ' + app.clickY + ')';
+    document.getElementById('subject-info').classList.remove('hidden');
+  };
+}
+
+var reloadLink = document.getElementById('reload-preview-link');
+if (reloadLink) reloadLink.addEventListener('click', function (e) {
+  e.preventDefault();
+  loadFirstFramePreview();
 });
 
-document.getElementById('clear-subject-btn').addEventListener('click', function () {
-  app.subject = null;
-  document.getElementById('subject-label').textContent = 'none';
-  document.getElementById('subject-info').classList.add('hidden');
-  document.getElementById('subject-next-btn').disabled = true;
-  document.querySelectorAll('.subject-chip').forEach(function (c) { c.classList.remove('selected'); });
+var clearClick = document.getElementById('clear-click-btn');
+if (clearClick) clearClick.addEventListener('click', function () {
+  app.clickX = null;
+  app.clickY = null;
+  var marker = document.getElementById('click-marker');
+  if (marker) marker.classList.add('hidden');
+  var label = document.getElementById('click-label');
+  if (label) label.textContent = '(none)';
 });
-
-document.getElementById('subject-next-btn').addEventListener('click', startProcessing);
 
 // =============== PROCESS ===============
 
@@ -385,6 +456,8 @@ async function resetSession() {
   app.fileName = null;
   app.workflow = null;
   app.subject = null;
+  app.clickX = null;
+  app.clickY = null;
   clearFile();
   document.getElementById('retry-btn').classList.add('hidden');
   document.querySelectorAll('.workflow-card').forEach(function (c) { c.classList.remove('selected'); });

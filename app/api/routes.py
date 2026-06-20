@@ -1,8 +1,9 @@
-"""Rotoscope Studio API routes."""
+﻿"""Rotoscope Studio API routes."""
 import os, shutil, threading, uuid
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 
 import app.config as _config
@@ -13,14 +14,18 @@ router = APIRouter(prefix='/api')
 
 WORKFLOW_FAST = 'fast_matte'
 WORKFLOW_PRECISE = 'precise_rotoscope'
-VALID_WORKFLOWS = {WORKFLOW_FAST, WORKFLOW_PRECISE}
+WORKFLOW_RVM = 'rvm_rotoscope'
+WORKFLOW_HYBRID = 'hybrid_rotoscope'
+VALID_WORKFLOWS = {WORKFLOW_FAST, WORKFLOW_PRECISE, WORKFLOW_RVM, WORKFLOW_HYBRID}
 
 
 @router.post('/upload')
 async def upload_video(
     file: UploadFile = File(...),
-    workflow: str = Form(WORKFLOW_FAST),
+    workflow: str = Form(WORKFLOW_RVM),
     subject: Optional[str] = Form(None),
+    click_x: Optional[float] = Form(None),
+    click_y: Optional[float] = Form(None),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail='No filename provided.')
@@ -35,9 +40,34 @@ async def upload_video(
     upload_path.parent.mkdir(parents=True, exist_ok=True)
     with open(upload_path, 'wb') as out:
         shutil.copyfileobj(file.file, out)
-    job = job_store.create_job(job_id=job_id, file_name=file.filename, file_path=str(upload_path), workflow=workflow, subject=subject)
+    # Stash the click coordinates on the job record so the
+    # processing thread can read them when it starts.
+    create_kwargs = dict(file_name=file.filename, file_path=str(upload_path), workflow=workflow, subject=subject)
+    if click_x is not None:
+        create_kwargs['click_x'] = float(click_x)
+    if click_y is not None:
+        create_kwargs['click_y'] = float(click_y)
+    job = job_store.create_job(job_id=job_id, **create_kwargs)
     return {'job_id': job_id, 'file_name': file.filename, 'workflow': workflow, 'status': job['state']}
 
+
+@router.post('/job/{job_id}/prompt')
+async def set_prompt(job_id: str, click_x: Optional[float] = Form(None), click_y: Optional[float] = Form(None), subject: Optional[str] = Form(None)):
+    # Attach a click prompt (and / or subject class) to an existing
+    # job. Used by the click-to-select UI between the subject step
+    # and the process step.
+    job = job_store.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail='Job not found.')
+    kwargs = {}
+    if click_x is not None:
+        kwargs['click_x'] = float(click_x)
+    if click_y is not None:
+        kwargs['click_y'] = float(click_y)
+    if subject:
+        kwargs['subject'] = subject
+    job_store.update_job(job_id, **kwargs)
+    return {'job_id': job_id, 'prompt': kwargs}
 
 @router.post('/process/{job_id}')
 async def start_processing(job_id: str):
@@ -56,10 +86,26 @@ def _run_pipeline(job_id: str) -> None:
         job = job_store.get_job(job_id)
         file_path = job['file_path']
         workflow = job['workflow']
-        job_store.update_job(job_id, state='processing', current_step='extracting_frames')
-        frame_extractor.extract_frames(job_id, file_path)
-        job_store.update_job(job_id, current_step='processing_frames', progress_percent=25)
-        frame_processor.process_frames(job_id, workflow)
+        job_store.update_job(job_id, state='processing', current_step='starting')
+        if workflow == WORKFLOW_HYBRID:
+            # Hybrid pipeline: video -> SAM2 -> selective BiRefNet ->
+            # fusion -> temporal smoothing -> alpha. No per-frame PNGs
+            # are extracted to disk; masks are produced directly.
+            frame_processor.process_frames(job_id, workflow)
+        elif workflow == WORKFLOW_RVM:
+            if frame_extractor._has_ffmpeg():
+                frame_extractor.extract_frames_fast(job_id, file_path)
+            else:
+                frame_extractor.extract_frames(job_id, file_path)
+            job_store.update_job(job_id, current_step='processing_frames', progress_percent=25)
+            frame_processor.process_frames(job_id, workflow)
+        else:
+            if frame_extractor._has_ffmpeg():
+                frame_extractor.extract_frames_fast(job_id, file_path)
+            else:
+                frame_extractor.extract_frames(job_id, file_path)
+            job_store.update_job(job_id, current_step='processing_frames', progress_percent=25)
+            frame_processor.process_frames(job_id, workflow)
         job_store.update_job(job_id, current_step='building_preview', progress_percent=75)
         preview_builder.build_preview(job_id, workflow)
         job_store.update_job(job_id, current_step='packaging_export', progress_percent=90)
@@ -68,6 +114,33 @@ def _run_pipeline(job_id: str) -> None:
     except Exception as exc:
         job_store.update_job(job_id, state='failed', error_message=str(exc))
 
+
+@router.get('/first_frame/{job_id}')
+async def get_first_frame(job_id: str):
+    # Return a JPEG preview of the first frame so the click-to-select
+    # UI can display it. Generated on demand from the source video
+    # and cached in the job folder so the second hit is instant.
+    job = job_store.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail='Job not found.')
+    fp = job.get('file_path')
+    if not fp or not os.path.isfile(fp):
+        raise HTTPException(status_code=404, detail='Source video not on disk.')
+    cache = _config.frames_dir(job_id) / 'first_preview.jpg'
+    if not cache.is_file():
+        import cv2
+        cap = cv2.VideoCapture(fp)
+        if not cap.isOpened():
+            raise HTTPException(status_code=500, detail='Cannot open source video.')
+        try:
+            ret, frame = cap.read()
+            if not ret:
+                raise HTTPException(status_code=500, detail='No frames in source video.')
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(cache), frame)
+        finally:
+            cap.release()
+    return FileResponse(str(cache), media_type='image/jpeg')
 
 @router.get('/status/{job_id}')
 async def get_status(job_id: str):

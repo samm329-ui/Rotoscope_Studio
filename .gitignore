@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+*.whl
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+._*
+
+# Runtime artifacts (generated per-job data)
+uploads/*
+!uploads/.gitkeep
+jobs/*
+!jobs/.gitkeep
+logs/*
+!logs/.gitkeep
+exports/*
+!exports/.gitkeep
+frames/*
+!frames/.gitkeep
+masks/*
+!masks/.gitkeep
+previews/*
+!previews/.gitkeep
+assets/*
+!assets/.gitkeep
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# PyInstaller
+*.manifest
+*.spec
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# Model weights / large binaries
+*.pt
+*.pth
+*.onnx
+*.pb
+*.h5
+*.ckpt

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rotoscope Studio</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">RS</span>
+      <span class="brand-name">Rotoscope Studio</span>
+    </div>
+    <nav class="step-tracker" id="step-tracker">
+      <span class="step" data-step="welcome">1. Welcome</span>
+      <span class="step" data-step="upload">2. Upload</span>
+      <span class="step" data-step="workflow">3. Workflow</span>
+      <span class="step" data-step="subject">4. Subject</span>
+      <span class="step" data-step="process">5. Process</span>
+      <span class="step" data-step="preview">6. Preview</span>
+      <span class="step" data-step="export">7. Export</span>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- WELCOME -->
+    <section class="card" id="welcome-card">
+      <h1>Welcome to Rotoscope Studio</h1>
+      <p class="muted">
+        Rotoscope Studio is a standalone tool that helps you upload a video, separate the subject from the background, and export the result.
+      </p>
+      <p class="muted">
+        Choose a fast matte result for quick previews, or a precise rotoscope result for cleaner separation. You can compare both before exporting.
+      </p>
+      <div class="button-row">
+        <button id="start-btn" class="primary">Start</button>
+        <button id="setup-btn" class="secondary">Open Setup Helper</button>
+      </div>
+      <div id="setup-output" class="setup-output hidden"></div>
+    </section>
+
+    <!-- UPLOAD -->
+    <section class="card hidden" id="upload-card">
+      <h2>Upload a video</h2>
+      <p class="muted">Drag and drop a video file, or use the browse button. Supported formats: MP4, MOV, AVI, WebM, MKV.</p>
+      <div id="dropzone" class="dropzone">
+        <p>Drop your video here</p>
+        <p class="muted small">or</p>
+        <button id="browse-btn" class="primary">Browse</button>
+        <input type="file" id="file-input" accept="video/*" class="hidden" />
+      </div>
+      <div id="file-info" class="file-info hidden">
+        <span id="file-name" class="file-name"></span>
+        <button id="remove-btn" class="secondary small">Remove File</button>
+      </div>
+      <div class="button-row">
+        <button id="upload-next-btn" class="primary" disabled>Next</button>
+      </div>
+    </section>
+
+    <!-- WORKFLOW -->
+    <section class="card hidden" id="workflow-card">
+      <h2>Choose a workflow</h2>
+      <p class="muted">Pick the result style for this run. You can switch and compare both before exporting.</p>
+      <div class="workflow-grid">
+        <button class="workflow-card" data-workflow="fast_matte">
+          <h3>Fast Matte</h3>
+          <p class="muted">Quick result. Best for previews and rough checks.</p>
+        </button>
+        <button class="workflow-card" data-workflow="precise_rotoscope">
+          <h3>Precise Rotoscope</h3>
+          <p class="muted">Cleaner separation. Higher quality, takes longer.</p>
+        </button>
+      </div>
+    </section>
+
+    <!-- SUBJECT -->
+    <section class="card hidden" id="subject-card">
+      <h2>Choose a subject</h2>
+      <p class="muted">Pick the person or object that should remain visible. Optional for fast matte, recommended for precise rotoscope.</p>
+      <div class="subject-grid">
+        <button class="subject-chip" data-subject="person">Person</button>
+        <button class="subject-chip" data-subject="man">Man</button>
+        <button class="subject-chip" data-subject="woman">Woman</button>
+        <button class="subject-chip" data-subject="child">Child</button>
+        <button class="subject-chip" data-subject="dog">Dog</button>
+        <button class="subject-chip" data-subject="cat">Cat</button>
+        <button class="subject-chip" data-subject="car">Car</button>
+        <button class="subject-chip" data-subject="bicycle">Bicycle</button>
+        <button class="subject-chip" data-subject="motorbike">Motorbike</button>
+        <button class="subject-chip" data-subject="airplane">Airplane</button>
+        <button class="subject-chip" data-subject="bus">Bus</button>
+        <button class="subject-chip" data-subject="train">Train</button>
+        <button class="subject-chip" data-subject="boat">Boat</button>
+        <button class="subject-chip" data-subject="bird">Bird</button>
+      </div>
+      <div id="subject-info" class="subject-info hidden">
+        Selected: <span id="subject-label"></span>
+        <button id="change-subject-btn" class="secondary small">Change Subject</button>
+        <button id="clear-subject-btn" class="secondary small">Clear Subject</button>
+      </div>
+      <div class="button-row">
+        <button id="subject-next-btn" class="primary" disabled>Start Processing</button>
+      </div>
+    </section>
+
+    <!-- PROCESS -->
+    <section class="card hidden" id="process-card">
+      <h2>Processing</h2>
+      <p id="process-status" class="muted">Preparing ...</p>
+      <div class="progress-bar">
+        <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+      </div>
+      <p id="process-percent" class="muted small">0%</p>
+      <div class="button-row">
+        <button id="cancel-btn" class="secondary">Cancel</button>
+        <button id="pause-btn" class="secondary hidden">Pause</button>
+        <button id="retry-btn" class="secondary hidden">Retry</button>
+      </div>
+    </section>
+
+    <!-- PREVIEW -->
+    <section class="card hidden" id="preview-card">
+      <h2>Preview</h2>
+      <p class="muted">Side-by-side view of original frames and the generated masks.</p>
+      <div id="preview-container" class="preview-container">
+        <p class="muted">Loading preview ...</p>
+      </div>
+      <div class="button-row">
+        <button id="compare-btn" class="secondary">Compare Workflows</button>
+        <button id="view-preview-btn" class="primary">View Preview</button>
+        <button id="to-export-btn" class="primary">Export</button>
+      </div>
+    </section>
+
+    <!-- EXPORT -->
+    <section class="card hidden" id="export-card">
+      <h2>Export</h2>
+      <p class="muted">Download the result as a zip bundle. The bundle includes the original frames, the generated masks, the preview, and a job summary.</p>
+      <div class="button-row">
+        <button id="download-btn" class="primary">Download</button>
+        <button id="reset-btn" class="secondary">Reset Session</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

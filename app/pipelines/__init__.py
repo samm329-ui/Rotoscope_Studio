@@ -1,0 +1,2 @@
+"""Rotoscope Studio pipelines package."""
+
